@@ -31,7 +31,7 @@ slave_cpus = int(os.popen(slave_cpu_command).read().strip())
 
 system_ram_kb = min(slave_ram_kb, master_ram_kb)
 
-system_ram_mb = system_ram_kb / 1024
+system_ram_mb = slave_ram_kb / 1024
 # Leave some RAM for the OS, Hadoop daemons, and system caches
 if system_ram_mb > 100*1024:
   spark_mb = system_ram_mb - 15 * 1024 # Leave 15 GB RAM
