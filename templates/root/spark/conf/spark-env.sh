@@ -2,6 +2,8 @@
 
 export SPARK_LOCAL_DIRS="{{spark_local_dirs}}"
 
+export SPARK_WORKER_DIR="/mnt/root/spark/work"
+
 # Standalone cluster options
 export SPARK_MASTER_OPTS="{{spark_master_opts}}"
 export SPARK_WORKER_INSTANCES={{spark_worker_instances}}
