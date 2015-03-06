@@ -36,7 +36,7 @@ if [[ $instance_type == r3* ]]; then
   mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 /dev/sdb
   mount -o $EXT4_MOUNT_OPTS /dev/sdb /mnt
 
-  if [[ $instance_type == "r3.8xlarge" ]]; then
+  if [[ $instance_type == "r3.8xlarge" || $instance_type == "hi1.4xlarge" ]]; then
     mkdir /mnt2
     # To turn TRIM support on, uncomment the following line.
     #echo '/dev/sdc /mnt2  ext4  defaults,noatime,nodiratime,discard 0 0' >> /etc/fstab
