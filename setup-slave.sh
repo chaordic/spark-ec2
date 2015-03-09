@@ -28,6 +28,7 @@ if [[ $instance_type == r3* || $instance_type == i2* || $instance_type == hi1* ]
   # Format & mount using ext4, which has the best performance among ext3, ext4, and xfs based
   # on our shuffle heavy benchmark
   EXT4_MOUNT_OPTS="defaults,noatime,nodiratime"
+  umount /mnt*
   rm -rf /mnt*
   mkdir /mnt
   # To turn TRIM support on, uncomment the following line.
