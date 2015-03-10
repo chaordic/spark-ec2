@@ -19,32 +19,29 @@ hostname $PRIVATE_DNS
 echo $PRIVATE_DNS > /etc/hostname
 HOSTNAME=$PRIVATE_DNS  # Fix the bash built-in hostname variable too
 
-echo "Setting up slave on `hostname`..."
-
-# Work around for R3 instances without pre-formatted ext3 disks
 instance_type=$(curl http://169.254.169.254/latest/meta-data/instance-type 2> /dev/null)
-if [[ $instance_type == r3* ]]; then
-  # If already exists, umount
-  umount /mnt
-  
-  # Format & mount using ext4, which has the best performance among ext3, ext4, and xfs based
-  # on our shuffle heavy benchmark
-  EXT4_MOUNT_OPTS="defaults,noatime,nodiratime"
-  rm -rf /mnt*
-  mkdir /mnt
-  # To turn TRIM support on, uncomment the following line.
-  #echo '/dev/sdb /mnt  ext4  defaults,noatime,nodiratime,discard 0 0' >> /etc/fstab
-  mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 /dev/sdb 
-  mount -o $EXT4_MOUNT_OPTS /dev/sdb /mnt
+echo "Setting up slave on `hostname`... of type $instance_type"
 
-  if [[ $instance_type == "r3.8xlarge" ]]; then
-    mkdir /mnt2
+# Work around for R3 or I2 instances without pre-formatted ext3 disks
+device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/ 2> /dev/null)
+umount /mnt*
+rm -rf /mnt*
+
+ephemeral_count=1
+for label in ${device_mapping[*]}; do
+  if [[ $label == ephemeral* ]]; then
+    device="/dev/$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/$label 2> /dev/null)"
+    [[ $ephemeral_count == 1 ]] && mount_point="/mnt" || mount_point="/mnt$ephemeral_count"
+    ((ephemeral_count++))
+    mkdir $mount_point
+
     # To turn TRIM support on, uncomment the following line.
-    #echo '/dev/sdc /mnt2  ext4  defaults,noatime,nodiratime,discard 0 0' >> /etc/fstab
-    mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 /dev/sdc
-    mount -o $EXT4_MOUNT_OPTS /dev/sdc /mnt2
+    #echo "$device $mount_point ext4 defaults,noatime,nodiratime,discard 0 0" >> /etc/fstab
+
+    mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 $device # TODO: Fix hardcoded -N setting
+    mount -o defaults,noatime,nodiratime $device $mount_point
   fi
-fi
+done
 
 # Mount options to use for ext3 and xfs disks (the ephemeral disks
 # are ext3, but we use xfs for EBS volumes to format them faster)
@@ -110,10 +107,3 @@ echo 1 > /proc/sys/vm/overcommit_memory
 # Add github to known hosts to get git@github.com clone to work
 # TODO(shivaram): Avoid duplicate entries ?
 cat /root/spark-ec2/github.hostkey >> /root/.ssh/known_hosts
-
-# Create /usr/bin/realpath which is used by R to find Java installations
-# NOTE: /usr/bin/realpath is missing in CentOS AMIs. See
-# http://superuser.com/questions/771104/usr-bin-realpath-not-found-in-centos-6-5
-echo '#!/bin/bash' > /usr/bin/realpath
-echo 'readlink -e "$@"' >> /usr/bin/realpath
-chmod a+x /usr/bin/realpath
