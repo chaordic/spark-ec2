@@ -8,7 +8,7 @@ if [ -d "spark" ]; then
 fi
 
 # Custom pre-packaged version
-if [[ "$SPARK_VERSION" == "http://"* ]]
+if [[ "$SPARK_VERSION" == "http"* ]]
 then
   wget $SPARK_VERSION
 
