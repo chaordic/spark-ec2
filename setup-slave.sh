@@ -19,39 +19,29 @@ hostname $PRIVATE_DNS
 echo $PRIVATE_DNS > /etc/hostname
 HOSTNAME=$PRIVATE_DNS  # Fix the bash built-in hostname variable too
 
-# Work around for R3 or I2 instances without pre-formatted ext3 disks
 instance_type=$(curl http://169.254.169.254/latest/meta-data/instance-type 2> /dev/null)
-
 echo "Setting up slave on `hostname`... of type $instance_type"
 
-if [[ $instance_type == r3* || $instance_type == i2* || $instance_type == hi1* ]]; then
-  # Format & mount using ext4, which has the best performance among ext3, ext4, and xfs based
-  # on our shuffle heavy benchmark
-  EXT4_MOUNT_OPTS="defaults,noatime,nodiratime"
-  umount /mnt*
-  rm -rf /mnt*
-  mkdir /mnt
-  # To turn TRIM support on, uncomment the following line.
-  #echo '/dev/sdb /mnt  ext4  defaults,noatime,nodiratime,discard 0 0' >> /etc/fstab
-  mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 /dev/sdb
-  mount -o $EXT4_MOUNT_OPTS /dev/sdb /mnt
+# Work around for R3 or I2 instances without pre-formatted ext3 disks
+device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/)
+umount /mnt*
+rm -rf /mnt*
 
-  if [[ $instance_type == "r3.8xlarge" || $instance_type == "hi1.4xlarge" ]]; then
-    mkdir /mnt2
+ephemeral_count=1
+for label in ${device_mapping[*]}; do
+  if [[ $label == ephemeral* ]]; then
+    device="/dev/$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/$label)"
+    [[ $ephemeral_count == 1 ]] && mount_point="/mnt" || mount_point="/mnt$ephemeral_count"
+    ephemeral_count++
+    mkdir $mount_point
+
     # To turn TRIM support on, uncomment the following line.
-    #echo '/dev/sdc /mnt2  ext4  defaults,noatime,nodiratime,discard 0 0' >> /etc/fstab
-    if [[ $instance_type == "r3.8xlarge" ]]; then
-      mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 /dev/sdc
-      mount -o $EXT4_MOUNT_OPTS /dev/sdc /mnt2
-    fi
-    # To turn TRIM support on, uncomment the following line.
-    #echo '/dev/sdf /mnt2  ext4  defaults,noatime,nodiratime,discard 0 0' >> /etc/fstab
-    if [[ $instance_type == "hi1.4xlarge" ]]; then
-      mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 /dev/sdf
-      mount -o $EXT4_MOUNT_OPTS /dev/sdf /mnt2
-    fi
+    #echo "$device $mount_point ext4 defaults,noatime,nodiratime,discard 0 0" >> /etc/fstab
+
+    mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 $device
+    mount -o defaults,noatime,nodiratime $device $mount_point
   fi
-fi
+done
 
 # Mount options to use for ext3 and xfs disks (the ephemeral disks
 # are ext3, but we use xfs for EBS volumes to format them faster)
