@@ -10,8 +10,7 @@ fi
 # Custom pre-packaged version
 if [[ "$SPARK_VERSION" == "http"* ]]
 then
-  wget $SPARK_VERSION
-
+  wget $SPARK_VERSION -O - | tar -xvz && mv `ls -d spark-* | grep -v ec2` spark
 # Github tag:
 elif [[ "$SPARK_VERSION" == *\|* ]]
 then
