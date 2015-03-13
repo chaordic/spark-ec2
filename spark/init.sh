@@ -7,8 +7,12 @@ if [ -d "spark" ]; then
   return
 fi
 
+# Custom pre-packaged version
+if [[ "$SPARK_VERSION" == "http"* ]]
+then
+  wget $SPARK_VERSION -O - | tar -xvz && mv `ls -d spark-* | grep -v ec2` spark
 # Github tag:
-if [[ "$SPARK_VERSION" == *\|* ]]
+elif [[ "$SPARK_VERSION" == *\|* ]]
 then
   mkdir spark
   pushd spark
