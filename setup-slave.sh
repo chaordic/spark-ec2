@@ -38,7 +38,7 @@ for label in ${device_mapping[*]}; do
     # To turn TRIM support on, uncomment the following line.
     #echo "$device $mount_point ext4 defaults,noatime,nodiratime,discard 0 0" >> /etc/fstab
 
-    mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 $device # TODO: Fix hardcoded -N setting
+    mkfs.btrfs $device
     mount -o defaults,noatime,nodiratime $device $mount_point
   fi
 done
