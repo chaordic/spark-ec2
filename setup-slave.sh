@@ -40,7 +40,7 @@ for label in ${device_mapping[*]}; do
     # To turn TRIM support on, uncomment the following line.
     #echo "$device $mount_point ext4 defaults,noatime,nodiratime,discard 0 0" >> /etc/fstab
 
-    mkfs.btrfs -O ^extref -f $device
+    mkfs.xfs -f $device
     mount -o defaults,noatime,nodiratime $device $mount_point
   fi
 done
