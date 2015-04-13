@@ -27,6 +27,8 @@ device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mappi
 umount /mnt*
 rm -rf /mnt*
 
+yum install -q -y xfsprogs
+
 ephemeral_count=1
 for label in ${device_mapping[*]}; do
   if [[ $label == ephemeral* ]]; then
@@ -54,7 +56,6 @@ function setup_ebs_volume {
     # Check if device is already formatted
     if ! blkid $device; then
       mkdir $mount_point
-      yum install -q -y xfsprogs
       if mkfs.xfs -q $device; then
         mount -o $XFS_MOUNT_OPTS $device $mount_point
         chmod -R a+w $mount_point
