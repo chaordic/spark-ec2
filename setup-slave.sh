@@ -27,7 +27,7 @@ device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mappi
 umount /mnt*
 rm -rf /mnt*
 
-yum install -q -y xfsprogs
+yum install -q -y xfsprogs btrfs-progs
 
 ephemeral_count=1
 for label in ${device_mapping[*]}; do
