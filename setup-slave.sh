@@ -27,7 +27,7 @@ device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mappi
 umount /mnt*
 rm -rf /mnt*
 
-yum install -q -y xfsprogs btrfs-progs
+yum install -q -y xfsprogs btrfs-progs parted
 
 ephemeral_count=1
 for label in ${device_mapping[*]}; do
@@ -40,8 +40,13 @@ for label in ${device_mapping[*]}; do
     # To turn TRIM support on, uncomment the following line.
     #echo "$device $mount_point ext4 defaults,noatime,nodiratime,discard 0 0" >> /etc/fstab
 
-    mkfs.xfs -f $device
-    mount -o defaults,noatime,nodiratime $device $mount_point
+    parted -s $device -- mklabel msdos mkpart primary linux-swap 0 "${SWAP_MB}MiB" mkpart primary ext2 "${SWAP_MB}Mib" -1s
+
+    mkswap "${device}1"
+    swapon "${device}1"
+
+    mkfs.btrfs -O ^extref -f "${device}2"
+    mount -o defaults,noatime,nodiratime "${device}2" $mount_point
   fi
 done
 
@@ -98,9 +103,6 @@ chmod -R a+w /mnt*
 # Remove ~/.ssh/known_hosts because it gets polluted as you start/stop many
 # clusters (new machines tend to come up under old hostnames)
 rm -f /root/.ssh/known_hosts
-
-# Create swap space on /mnt
-/root/spark-ec2/create-swap.sh $SWAP_MB
 
 # Allow memory to be over committed. Helps in pyspark where we fork
 echo 1 > /proc/sys/vm/overcommit_memory
