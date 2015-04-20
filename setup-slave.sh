@@ -27,6 +27,8 @@ device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mappi
 umount /mnt*
 rm -rf /mnt*
 
+yum install -q -y xfsprogs btrfs-progs parted
+
 ephemeral_count=1
 for label in ${device_mapping[*]}; do
   if [[ $label == ephemeral* ]]; then
@@ -38,8 +40,13 @@ for label in ${device_mapping[*]}; do
     # To turn TRIM support on, uncomment the following line.
     #echo "$device $mount_point ext4 defaults,noatime,nodiratime,discard 0 0" >> /etc/fstab
 
-    mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 $device # TODO: Fix hardcoded -N setting
-    mount -o defaults,noatime,nodiratime $device $mount_point
+    parted -s $device -- mklabel msdos mkpart primary linux-swap 0 "${SWAP_MB}MiB" mkpart primary ext2 "${SWAP_MB}Mib" -1s
+
+    mkswap "${device}1"
+    swapon "${device}1"
+
+    mkfs.btrfs -O ^extref -f "${device}2"
+    mount -o defaults,noatime,nodiratime "${device}2" $mount_point
   fi
 done
 
@@ -54,7 +61,6 @@ function setup_ebs_volume {
     # Check if device is already formatted
     if ! blkid $device; then
       mkdir $mount_point
-      yum install -q -y xfsprogs
       if mkfs.xfs -q $device; then
         mount -o $XFS_MOUNT_OPTS $device $mount_point
         chmod -R a+w $mount_point
@@ -97,9 +103,6 @@ chmod -R a+w /mnt*
 # Remove ~/.ssh/known_hosts because it gets polluted as you start/stop many
 # clusters (new machines tend to come up under old hostnames)
 rm -f /root/.ssh/known_hosts
-
-# Create swap space on /mnt
-/root/spark-ec2/create-swap.sh $SWAP_MB
 
 # Allow memory to be over committed. Helps in pyspark where we fork
 echo 1 > /proc/sys/vm/overcommit_memory
