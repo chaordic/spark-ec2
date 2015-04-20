@@ -42,6 +42,8 @@ for label in ${device_mapping[*]}; do
 
     parted -s $device -- mklabel msdos mkpart primary linux-swap 0 "${SWAP_MB}MiB" mkpart primary ext2 "${SWAP_MB}Mib" -1s
 
+    sleep 3
+
     mkswap "${device}1"
     swapon "${device}1"
 
