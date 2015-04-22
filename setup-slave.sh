@@ -69,7 +69,7 @@ for label in ${device_mapping[*]}; do
     partition_and_mount_device($device, $mount_point)
     if [ $? -ne 0 ]; then
       echo "host $HOSTNAME not healthy, terminating host."
-      shutdown
+      shutdown -h now
     fi
   fi
 done
