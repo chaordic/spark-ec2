@@ -66,11 +66,7 @@ for label in ${device_mapping[*]}; do
     [[ $ephemeral_count == 1 ]] && mount_point="/mnt" || mount_point="/mnt$ephemeral_count"
     ((ephemeral_count++))
 
-    partition_and_mount_device $device $mount_point
-    if [ $? -ne 0 ]; then
-      echo "host $HOSTNAME not healthy, terminating host."
-      shutdown -h now
-    fi
+    partition_and_mount_device $device $mount_point    
   fi
 done
 
