@@ -7,6 +7,35 @@ if [[ -e /sys/kernel/mm/transparent_hugepage/enabled ]]; then
   echo never > /sys/kernel/mm/transparent_hugepage/enabled
 fi
 
+function partition_and_mount_device() {
+    device=$1
+    mount_point=$2
+
+    mkdir -p $mount_point
+
+    parted -s $device -- mklabel msdos mkpart primary linux-swap 0 "${SWAP_MB}MiB" mkpart primary ext2 "${SWAP_MB}Mib" -1s
+
+    attempts=20
+
+    while [ ! -f "${device}2" ]
+    do
+      echo "Waiting for ${device} detection"
+      sleep 0.5
+      attempts=$((attempts - 1))
+      if [ $attempts -eq 0 ]; then
+        return -1
+      fi
+    done
+
+    echo "${device} detected"
+
+    mkswap "${device}1"
+    swapon "${device}1"
+
+    mkfs.btrfs -O ^extref -f "${device}2"
+    mount -o defaults,noatime,nodiratime "${device}2" $mount_point
+}
+
 # Make sure we are in the spark-ec2 directory
 cd /root/spark-ec2
 
@@ -35,20 +64,12 @@ for label in ${device_mapping[*]}; do
     device="/dev/$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/$label 2> /dev/null)"
     [[ $ephemeral_count == 1 ]] && mount_point="/mnt" || mount_point="/mnt$ephemeral_count"
     ((ephemeral_count++))
-    mkdir $mount_point
 
-    # To turn TRIM support on, uncomment the following line.
-    #echo "$device $mount_point ext4 defaults,noatime,nodiratime,discard 0 0" >> /etc/fstab
-
-    parted -s $device -- mklabel msdos mkpart primary linux-swap 0 "${SWAP_MB}MiB" mkpart primary ext2 "${SWAP_MB}Mib" -1s
-
-    sleep 3
-
-    mkswap "${device}1"
-    swapon "${device}1"
-
-    mkfs.btrfs -O ^extref -f "${device}2"
-    mount -o defaults,noatime,nodiratime "${device}2" $mount_point
+    partition_and_mount_device($device, $mount_point)
+    if [ $? -lt 0 ]; then
+      echo "host $HOSTNAME not healthy, terminating host."
+      shutdown
+    fi
   fi
 done
 
