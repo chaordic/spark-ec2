@@ -17,13 +17,14 @@ function partition_and_mount_device() {
 
     attempts=20
 
-    while [ ! -f "${device}2" ]
+    while [ ! -b "${device}2" ]
     do
       echo "Waiting for ${device} detection"
       sleep 0.5
       attempts=$((attempts - 1))
       if [ $attempts -eq 0 ]; then
-        return -1
+        echo "Fail to detect device ${device}"
+        return 1
       fi
     done
 
@@ -66,7 +67,7 @@ for label in ${device_mapping[*]}; do
     ((ephemeral_count++))
 
     partition_and_mount_device($device, $mount_point)
-    if [ $? -lt 0 ]; then
+    if [ $? -ne 0 ]; then
       echo "host $HOSTNAME not healthy, terminating host."
       shutdown
     fi
