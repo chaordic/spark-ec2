@@ -14,21 +14,7 @@ function partition_and_mount_device() {
     mkdir -p $mount_point
 
     parted -s $device -- mklabel msdos mkpart primary linux-swap 0 "${SWAP_MB}MiB" mkpart primary ext2 "${SWAP_MB}Mib" -1s
-
-    attempts=20
-
-    while [ ! -b "${device}2" ]
-    do
-      echo "Waiting for ${device} detection"
-      sleep 0.5
-      attempts=$((attempts - 1))
-      if [ $attempts -eq 0 ]; then
-        echo "Fail to detect device ${device}"
-        return 1
-      fi
-    done
-
-    echo "${device} detected"
+    sfdisk -R $device
 
     mkswap "${device}1"
     swapon "${device}1"
