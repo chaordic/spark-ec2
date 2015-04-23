@@ -8,13 +8,13 @@ if [[ -e /sys/kernel/mm/transparent_hugepage/enabled ]]; then
 fi
 
 function partition_and_mount_device() {
-    device=$(realpath $1)
+    device=$(readlink -e $1)
     mount_point=$2
 
     mkdir -p $mount_point
 
     parted -s $device -- mklabel msdos mkpart primary linux-swap 0 "${SWAP_MB}MiB" mkpart primary ext2 "${SWAP_MB}Mib" -1s
-    partprobe
+    partprobe "$device"
 
     mkswap "${device}1"
     swapon "${device}1"
