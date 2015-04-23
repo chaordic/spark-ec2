@@ -8,7 +8,7 @@ if [[ -e /sys/kernel/mm/transparent_hugepage/enabled ]]; then
 fi
 
 function partition_and_mount_device() {
-    device=$1
+    device=$(realpath $1)
     mount_point=$2
 
     mkdir -p $mount_point
