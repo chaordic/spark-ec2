@@ -14,7 +14,7 @@ function partition_and_mount_device() {
     mkdir -p $mount_point
 
     parted -s $device -- mklabel msdos mkpart primary linux-swap 0 "${SWAP_MB}MiB" mkpart primary ext2 "${SWAP_MB}Mib" -1s
-    sfdisk -R $device
+    partprobe
 
     mkswap "${device}1"
     swapon "${device}1"
