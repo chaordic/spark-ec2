@@ -16,7 +16,6 @@ function mount_device() {
     XFS_MOUNT_OPTS="defaults,noatime,nodiratime,allocsize=8m"
 
     mkfs.xfs -q ${device}
-    mount -o defaults,noatime,nodiratime ${device} $mount_point
     mount -o $XFS_MOUNT_OPTS $device $mount_point
     chmod -R a+w $mount_point
 }
