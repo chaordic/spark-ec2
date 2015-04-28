@@ -7,20 +7,17 @@ if [[ -e /sys/kernel/mm/transparent_hugepage/enabled ]]; then
   echo never > /sys/kernel/mm/transparent_hugepage/enabled
 fi
 
-function partition_and_mount_device() {
+function mount_device() {
     device=$(readlink -e $1)
     mount_point=$2
 
     mkdir -p $mount_point
 
-    parted -s $device -- mklabel msdos mkpart primary linux-swap 0 "${SWAP_MB}MiB" mkpart primary ext2 "${SWAP_MB}Mib" -1s
-    partprobe "$device"
+    XFS_MOUNT_OPTS="defaults,noatime,nodiratime,allocsize=8m"
 
-    mkswap "${device}1"
-    swapon "${device}1"
-
-    mkfs.btrfs -O ^extref -f "${device}2"
-    mount -o defaults,noatime,nodiratime "${device}2" $mount_point
+    mkfs.xfs -q ${device}
+    mount -o $XFS_MOUNT_OPTS $device $mount_point
+    chmod -R a+w $mount_point
 }
 
 # Make sure we are in the spark-ec2 directory
@@ -43,7 +40,7 @@ device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mappi
 umount /mnt*
 rm -rf /mnt*
 
-yum install -q -y xfsprogs btrfs-progs parted
+yum install -q -y xfsprogs
 
 ephemeral_count=1
 for label in ${device_mapping[*]}; do
@@ -52,7 +49,7 @@ for label in ${device_mapping[*]}; do
     [[ $ephemeral_count == 1 ]] && mount_point="/mnt" || mount_point="/mnt$ephemeral_count"
     ((ephemeral_count++))
 
-    partition_and_mount_device $device $mount_point    
+    mount_device $device $mount_point
   fi
 done
 
@@ -109,6 +106,9 @@ chmod -R a+w /mnt*
 # Remove ~/.ssh/known_hosts because it gets polluted as you start/stop many
 # clusters (new machines tend to come up under old hostnames)
 rm -f /root/.ssh/known_hosts
+
+# Create swap space on /mnt
+/root/spark-ec2/create-swap.sh
 
 # Allow memory to be over committed. Helps in pyspark where we fork
 echo 1 > /proc/sys/vm/overcommit_memory
