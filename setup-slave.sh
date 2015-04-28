@@ -15,7 +15,7 @@ function mount_device() {
 
     XFS_MOUNT_OPTS="defaults,noatime,nodiratime,allocsize=8m"
 
-    mkfs.xfs -q ${device}
+    mkfs.xfs -f -q ${device}
     mount -o $XFS_MOUNT_OPTS $device $mount_point
     chmod -R a+w $mount_point
 }
@@ -108,7 +108,7 @@ chmod -R a+w /mnt*
 rm -f /root/.ssh/known_hosts
 
 # Create swap space on /mnt
-/root/spark-ec2/create-swap.sh
+/root/spark-ec2/create-swap.sh $SWAP_MB
 
 # Allow memory to be over committed. Helps in pyspark where we fork
 echo 1 > /proc/sys/vm/overcommit_memory
