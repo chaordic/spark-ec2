@@ -2,6 +2,8 @@
 
 export SPARK_LOCAL_DIRS="{{spark_local_dirs}}"
 
+export SPARK_WORKER_DIR='/mnt/root/spark/work'
+
 # Standalone cluster options
 export SPARK_MASTER_OPTS="{{spark_master_opts}}"
 if [ -n {{spark_worker_instances}} ]; then
@@ -22,9 +24,6 @@ if [[ -z "$SPARK_PUBLIC_DNS" ]]; then
   SPARK_PUBLIC_DNS=`wget -q -O - http://169.254.169.254/latest/meta-data/local-ipv4`
 fi
 export SPARK_PUBLIC_DNS
-
-# Used for YARN model
-export YARN_CONF_DIR="/root/ephemeral-hdfs/conf"
 
 # Set a high ulimit for large shuffles, only root can do this
 if [ $(id -u) == "0" ]

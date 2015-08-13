@@ -7,6 +7,19 @@ if [[ -e /sys/kernel/mm/transparent_hugepage/enabled ]]; then
   echo never > /sys/kernel/mm/transparent_hugepage/enabled
 fi
 
+function mount_device() {
+    device=$(readlink -e $1)
+    mount_point=$2
+
+    mkdir -p $mount_point
+
+    XFS_MOUNT_OPTS="defaults,noatime,nodiratime,allocsize=8m"
+
+    mkfs.xfs -f -q ${device}
+    mount -o $XFS_MOUNT_OPTS $device $mount_point
+    chmod -R a+w $mount_point
+}
+
 # Make sure we are in the spark-ec2 directory
 pushd /root/spark-ec2 > /dev/null
 
@@ -14,7 +27,7 @@ source ec2-variables.sh
 
 # Set hostname based on EC2 private DNS name, so that it is set correctly
 # even if the instance is restarted with a different private DNS name
-PRIVATE_DNS=`wget -q -O - http://169.254.169.254/latest/meta-data/local-hostname`
+PRIVATE_DNS=`wget -q -O - http://instance-data.ec2.internal/latest/meta-data/local-hostname`
 hostname $PRIVATE_DNS
 echo $PRIVATE_DNS > /etc/hostname
 HOSTNAME=$PRIVATE_DNS  # Fix the bash built-in hostname variable too
@@ -25,35 +38,23 @@ bash /root/spark-ec2/resolve-hostname.sh
 # Work around for R3 or I2 instances without pre-formatted ext3 disks
 instance_type=$(curl http://169.254.169.254/latest/meta-data/instance-type 2> /dev/null)
 
-echo "Setting up slave on `hostname`... of type $instance_type"
+# Work around for R3 or I2 instances without pre-formatted ext3 disks
+device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/ 2> /dev/null)
+umount /mnt*
+rm -rf /mnt*
 
-if [[ $instance_type == r3* || $instance_type == i2* || $instance_type == hi1* ]]; then
-  # Format & mount using ext4, which has the best performance among ext3, ext4, and xfs based
-  # on our shuffle heavy benchmark
-  EXT4_MOUNT_OPTS="defaults,noatime,nodiratime"
-  rm -rf /mnt*
-  mkdir /mnt
-  # To turn TRIM support on, uncomment the following line.
-  #echo '/dev/sdb /mnt  ext4  defaults,noatime,nodiratime,discard 0 0' >> /etc/fstab
-  mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 /dev/sdb
-  mount -o $EXT4_MOUNT_OPTS /dev/sdb /mnt
+yum install -q -y xfsprogs
 
-  if [[ $instance_type == "r3.8xlarge" || $instance_type == "hi1.4xlarge" ]]; then
-    mkdir /mnt2
-    # To turn TRIM support on, uncomment the following line.
-    #echo '/dev/sdc /mnt2  ext4  defaults,noatime,nodiratime,discard 0 0' >> /etc/fstab
-    if [[ $instance_type == "r3.8xlarge" ]]; then
-      mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 /dev/sdc      
-      mount -o $EXT4_MOUNT_OPTS /dev/sdc /mnt2
-    fi
-    # To turn TRIM support on, uncomment the following line.
-    #echo '/dev/sdf /mnt2  ext4  defaults,noatime,nodiratime,discard 0 0' >> /etc/fstab
-    if [[ $instance_type == "hi1.4xlarge" ]]; then
-      mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 /dev/sdf      
-      mount -o $EXT4_MOUNT_OPTS /dev/sdf /mnt2
-    fi    
+ephemeral_count=1
+for label in ${device_mapping[*]}; do
+  if [[ $label == ephemeral* ]]; then
+    device="/dev/$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/$label 2> /dev/null)"
+    [[ $ephemeral_count == 1 ]] && mount_point="/mnt" || mount_point="/mnt$ephemeral_count"
+    ((ephemeral_count++))
+
+    mount_device $device $mount_point
   fi
-fi
+done
 
 # Mount options to use for ext3 and xfs disks (the ephemeral disks
 # are ext3, but we use xfs for EBS volumes to format them faster)
@@ -66,7 +67,6 @@ function setup_ebs_volume {
     # Check if device is already formatted
     if ! blkid $device; then
       mkdir $mount_point
-      yum install -q -y xfsprogs
       if mkfs.xfs -q $device; then
         mount -o $XFS_MOUNT_OPTS $device $mount_point
         chmod -R a+w $mount_point
@@ -126,9 +126,3 @@ cat /root/spark-ec2/github.hostkey >> /root/.ssh/known_hosts
 echo '#!/bin/bash' > /usr/bin/realpath
 echo 'readlink -e "$@"' >> /usr/bin/realpath
 chmod a+x /usr/bin/realpath
-
-popd > /dev/null
-
-# this is to set the ulimit for root and other users
-echo '* soft nofile 1000000' >> /etc/security/limits.conf
-echo '* hard nofile 1000000' >> /etc/security/limits.conf
