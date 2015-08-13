@@ -7,19 +7,6 @@ if [[ -e /sys/kernel/mm/transparent_hugepage/enabled ]]; then
   echo never > /sys/kernel/mm/transparent_hugepage/enabled
 fi
 
-function mount_device() {
-    device=$(readlink -e $1)
-    mount_point=$2
-
-    mkdir -p $mount_point
-
-    XFS_MOUNT_OPTS="defaults,noatime,nodiratime,allocsize=8m"
-
-    mkfs.xfs -f -q ${device}
-    mount -o $XFS_MOUNT_OPTS $device $mount_point
-    chmod -R a+w $mount_point
-}
-
 # Make sure we are in the spark-ec2 directory
 pushd /root/spark-ec2 > /dev/null
 
@@ -35,15 +22,26 @@ HOSTNAME=$PRIVATE_DNS  # Fix the bash built-in hostname variable too
 echo "checking/fixing resolution of hostname"
 bash /root/spark-ec2/resolve-hostname.sh
 
-# Work around for R3 or I2 instances without pre-formatted ext3 disks
-instance_type=$(curl http://169.254.169.254/latest/meta-data/instance-type 2> /dev/null)
-
-# Work around for R3 or I2 instances without pre-formatted ext3 disks
+# Finding all disks and formatting/mounting them with XFS
 device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/ 2> /dev/null)
 umount /mnt*
 rm -rf /mnt*
 
+# Mount options to use for ext3 and xfs disks (the ephemeral disks
+# are ext3, but we use xfs for EBS volumes to format them faster)
+XFS_MOUNT_OPTS="defaults,noatime,nodiratime,allocsize=8m"
 yum install -q -y xfsprogs
+
+function mount_device() {
+    device=$(readlink -e $1)
+    mount_point=$2
+
+    mkdir -p $mount_point
+
+    mkfs.xfs -f -q ${device}
+    mount -o $XFS_MOUNT_OPTS $device $mount_point
+    chmod -R a+w $mount_point
+}
 
 ephemeral_count=1
 for label in ${device_mapping[*]}; do
@@ -56,10 +54,6 @@ for label in ${device_mapping[*]}; do
   fi
 done
 
-# Mount options to use for ext3 and xfs disks (the ephemeral disks
-# are ext3, but we use xfs for EBS volumes to format them faster)
-XFS_MOUNT_OPTS="defaults,noatime,nodiratime,allocsize=8m"
-
 function setup_ebs_volume {
   device=$1
   mount_point=$2
@@ -67,6 +61,7 @@ function setup_ebs_volume {
     # Check if device is already formatted
     if ! blkid $device; then
       mkdir $mount_point
+      yum install -q -y xfsprogs
       if mkfs.xfs -q $device; then
         mount -o $XFS_MOUNT_OPTS $device $mount_point
         chmod -R a+w $mount_point
@@ -126,3 +121,9 @@ cat /root/spark-ec2/github.hostkey >> /root/.ssh/known_hosts
 echo '#!/bin/bash' > /usr/bin/realpath
 echo 'readlink -e "$@"' >> /usr/bin/realpath
 chmod a+x /usr/bin/realpath
+
+popd > /dev/null
+
+# this is to set the ulimit for root and other users
+echo '* soft nofile 1000000' >> /etc/security/limits.conf
+echo '* hard nofile 1000000' >> /etc/security/limits.conf
