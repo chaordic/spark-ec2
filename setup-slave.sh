@@ -36,11 +36,13 @@ function mount_device() {
     device=$(readlink -e $1)
     mount_point=$2
 
-    mkdir -p $mount_point
+    if [ -b "$device" ]; then
+      mkdir -p $mount_point
 
-    mkfs.xfs -f -q ${device}
-    mount -o $XFS_MOUNT_OPTS $device $mount_point
-    chmod -R a+w $mount_point
+      mkfs.xfs -f -q ${device}
+      mount -o $XFS_MOUNT_OPTS $device $mount_point
+      chmod -R a+w $mount_point
+    fi
 }
 
 ephemeral_count=1
