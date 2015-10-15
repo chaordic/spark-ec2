@@ -9,6 +9,11 @@ export SPARK_MASTER_OPTS="{{spark_master_opts}}"
 if [ -n {{spark_worker_instances}} ]; then
   export SPARK_WORKER_INSTANCES={{spark_worker_instances}}
 fi
+
+if [ -n {{spark_executor_instances}} ]; then
+  export SPARK_EXECUTOR_INSTANCES={{spark_executor_instances}}
+fi
+
 export SPARK_WORKER_CORES={{spark_worker_cores}}
 export SPARK_EXECUTOR_CORES={{spark_executor_cores}}
 
