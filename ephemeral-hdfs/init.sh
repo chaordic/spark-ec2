@@ -16,45 +16,23 @@ case "$HADOOP_MAJOR_VERSION" in
     mv hadoop-1.0.4/ ephemeral-hdfs/
     sed -i 's/-jvm server/-server/g' /root/ephemeral-hdfs/bin/hadoop
     ;;
-  2) 
-    wget http://archive.cloudera.com/cdh4/cdh/4/hadoop-2.0.0-cdh4.7.1.tar.gz
+  2|yarn)
+    wget http://www.us.apache.org/dist/hadoop/common/hadoop-2.7.1/hadoop-2.7.1.tar.gz
     echo "Unpacking Hadoop"
     tar xvzf hadoop-*.tar.gz > /tmp/spark-ec2_hadoop.log
     rm hadoop-*.tar.gz
-    mv hadoop-2.0.0-cdh4.7.1/ ephemeral-hdfs/
+    mv hadoop-2.7.1/ persistent-hdfs/
 
     # Have single conf dir
-    rm -rf /root/ephemeral-hdfs/etc/hadoop/
-    ln -s /root/ephemeral-hdfs/conf /root/ephemeral-hdfs/etc/hadoop
-    ;;
-  yarn)
-    wget http://archive.cloudera.com/cdh4/cdh/4/hadoop-2.0.0-cdh4.7.1.tar.gz
-    echo "Unpacking Hadoop"
-    tar xvzf hadoop-*.tar.gz > /tmp/spark-ec2_hadoop.log
-    rm hadoop-*.tar.gz
-    mv hadoop-2.0.0-cdh4.7.1/ ephemeral-hdfs/
-
-    # Have single conf dir
-    rm -rf /root/ephemeral-hdfs/etc/hadoop/
-    ln -s /root/ephemeral-hdfs/conf /root/ephemeral-hdfs/etc/hadoop
-    ;;
-  yarn)
-    wget http://s3.amazonaws.com/spark-related-packages/hadoop-2.4.0.tar.gz
-    echo "Unpacking Hadoop"
-    tar xvzf hadoop-*.tar.gz > /tmp/spark-ec2_hadoop.log
-    rm hadoop-*.tar.gz
-    mv hadoop-2.4.0/ ephemeral-hdfs/
-
-    # Have single conf dir
-    rm -rf /root/ephemeral-hdfs/etc/hadoop/
-    ln -s /root/ephemeral-hdfs/conf /root/ephemeral-hdfs/etc/hadoop
+    rm -rf /root/persistent-hdfs/etc/hadoop/
+    ln -s /root/persistent-hdfs/conf /root/persistent-hdfs/etc/hadoop
     ;;
 
   *)
      echo "ERROR: Unknown Hadoop version"
      return 1
 esac
-cp /root/hadoop-native/* ephemeral-hdfs/lib/native/
+#cp /root/hadoop-native/* ephemeral-hdfs/lib/native/
 /root/spark-ec2/copy-dir /root/ephemeral-hdfs
 
 popd > /dev/null
