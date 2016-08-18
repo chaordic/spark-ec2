@@ -7,8 +7,13 @@ if [ -d "spark" ]; then
   return
 fi
 
+# Custom pre-packaged version
+if [[ "$SPARK_VERSION" == "http"* ]]
+then
+  wget $SPARK_VERSION
+
 # Github tag:
-if [[ "$SPARK_VERSION" == *\|* ]]
+elif [[ "$SPARK_VERSION" == *\|* ]]
 then
   mkdir spark
   pushd spark > /dev/null
