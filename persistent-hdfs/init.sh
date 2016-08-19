@@ -17,14 +17,15 @@ case "$HADOOP_MAJOR_VERSION" in
     cp /root/hadoop-native/* /root/persistent-hdfs/lib/native/
     ;;
   2|yarn)
-    wget http://www-us.apache.org/dist/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
+    version=2.7.2
+    wget http://www-us.apache.org/dist/hadoop/common/hadoop-$version/hadoop-$version.tar.gz
     echo "Unpacking Hadoop"
     tar xvzf hadoop-*.tar.gz > /tmp/spark-ec2_hadoop.log
     rm hadoop-*.tar.gz
-    mv `ls -d hadoop*` persistent-hdfs/
+    mv hadoop-$version  persistent-hdfs/
 
     # Have single conf dir
-    rm -rf /root/persistent-hdfs/etc/hadoop/
+    rm -rf /root/persistent-hdfs/etc/hadoop
     ln -s /root/persistent-hdfs/conf /root/persistent-hdfs/etc/hadoop
     ;;
 
