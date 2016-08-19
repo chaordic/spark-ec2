@@ -16,35 +16,12 @@ case "$HADOOP_MAJOR_VERSION" in
     mv hadoop-1.0.4/ persistent-hdfs/
     cp /root/hadoop-native/* /root/persistent-hdfs/lib/native/
     ;;
-  2)
-    wget http://archive.cloudera.com/cdh4/cdh/4/hadoop-2.0.0-cdh4.7.1.tar.gz
+  2|yarn)
+    wget http://www-us.apache.org/dist/hadoop/common/hadoop-2.7.2/hadoop-2.7.2.tar.gz
     echo "Unpacking Hadoop"
     tar xvzf hadoop-*.tar.gz > /tmp/spark-ec2_hadoop.log
     rm hadoop-*.tar.gz
-    mv hadoop-2.0.0-cdh4.7.1/ persistent-hdfs/
-
-    # Have single conf dir
-    rm -rf /root/persistent-hdfs/etc/hadoop/
-    ln -s /root/persistent-hdfs/conf /root/persistent-hdfs/etc/hadoop
-    ;;
-  yarn)
-    wget http://archive.cloudera.com/cdh4/cdh/4/hadoop-2.0.0-cdh4.7.1.tar.gz
-    echo "Unpacking Hadoop"
-    tar xvzf hadoop-*.tar.gz > /tmp/spark-ec2_hadoop.log
-    rm hadoop-*.tar.gz
-    mv hadoop-2.0.0-cdh4.7.1/ persistent-hdfs/
-
-    # Have single conf dir
-    rm -rf /root/persistent-hdfs/etc/hadoop/
-    ln -s /root/persistent-hdfs/conf /root/persistent-hdfs/etc/hadoop
-    cp /root/hadoop-native/* /root/persistent-hdfs/lib/native/
-    ;;
-  yarn)
-    wget http://s3.amazonaws.com/spark-related-packages/hadoop-2.4.0.tar.gz
-    echo "Unpacking Hadoop"
-    tar xvzf hadoop-*.tar.gz > /tmp/spark-ec2_hadoop.log
-    rm hadoop-*.tar.gz
-    mv hadoop-2.4.0/ persistent-hdfs/
+    mv `ls -d hadoop*` persistent-hdfs/
 
     # Have single conf dir
     rm -rf /root/persistent-hdfs/etc/hadoop/
