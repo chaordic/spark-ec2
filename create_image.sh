@@ -4,10 +4,11 @@
 # This has only been tested with Amazon Linux AMI 2014.03.2
 
 JAVA_VERSION=1.8.0
-HADOOP_VERSION=2.6.0
+HADOOP_VERSION=2.7.2
 MAVEN_VERSION=3.3.3
 
 set -e
+set -x
 
 if [ "$(id -u)" != "0" ]; then
    echo "This script must be run as root" 1>&2
@@ -19,7 +20,7 @@ sudo yum install -y java-$JAVA_VERSION-openjdk-devel gcc gcc-c++ ant git
 # Perf tools
 sudo yum install -y dstat iotop strace sysstat htop perf
 sudo debuginfo-install -q -y glibc
-sudo debuginfo-install -q -y kernel
+#sudo debuginfo-install -q -y kernel
 sudo yum --enablerepo='*-debug*' install -q -y java-$JAVA_VERSION-openjdk-debuginfo.x86_64
 
 # PySpark and MLlib deps

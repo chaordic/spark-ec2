@@ -10,8 +10,7 @@ fi
 # Custom pre-packaged version
 if [[ "$SPARK_VERSION" == "http"* ]]
 then
-  wget $SPARK_VERSION
-
+  wget $SPARK_VERSION -O - | tar -xvz && mv `ls -d spark-* | grep -v ec2` spark
 # Github tag:
 elif [[ "$SPARK_VERSION" == *\|* ]]
 then
@@ -123,10 +122,15 @@ else
     1.2.1)
       if [[ "$HADOOP_MAJOR_VERSION" == "1" ]]; then
         wget http://s3.amazonaws.com/spark-related-packages/spark-1.2.1-bin-hadoop1.tgz
-      elif [[ "$HADOOP_MAJOR_VERSION" == "2" ]]; then
-        wget http://s3.amazonaws.com/spark-related-packages/spark-1.2.1-bin-cdh4.tgz
       else
-        wget http://s3.amazonaws.com/spark-related-packages/spark-1.2.1-bin-hadoop2.4.tgz
+        wget http://s3.amazonaws.com/spark-related-packages/spark-1.2.1-bin-cdh4.tgz
+      fi
+      ;;
+    1.3.0)
+      if [[ "$HADOOP_MAJOR_VERSION" == "1" ]]; then
+        wget http://s3.amazonaws.com/spark-related-packages/spark-1.3.0-bin-hadoop1.tgz
+      else
+        wget http://s3.amazonaws.com/spark-related-packages/spark-1.3.0-bin-cdh4.tgz
       fi
       ;;
     *)

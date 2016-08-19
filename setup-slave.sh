@@ -14,7 +14,7 @@ source ec2-variables.sh
 
 # Set hostname based on EC2 private DNS name, so that it is set correctly
 # even if the instance is restarted with a different private DNS name
-PRIVATE_DNS=`wget -q -O - http://169.254.169.254/latest/meta-data/local-hostname`
+PRIVATE_DNS=`wget -q -O - http://instance-data.ec2.internal/latest/meta-data/local-hostname`
 hostname $PRIVATE_DNS
 echo $PRIVATE_DNS > /etc/hostname
 HOSTNAME=$PRIVATE_DNS  # Fix the bash built-in hostname variable too
@@ -22,30 +22,39 @@ HOSTNAME=$PRIVATE_DNS  # Fix the bash built-in hostname variable too
 echo "checking/fixing resolution of hostname"
 bash /root/spark-ec2/resolve-hostname.sh
 
-# Work around for R3 or I2 instances without pre-formatted ext3 disks
-device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/)
+# Finding all disks and formatting/mounting them with XFS
+device_mapping=$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/ 2> /dev/null)
 umount /mnt*
 rm -rf /mnt*
-
-ephemeral_count=1
-for label in ${device_mapping[*]}; do
-  if [[ $label == ephemeral* ]]; then
-    device="/dev/$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/$label)"
-    [[ $ephemeral_count == 1 ]] && mount_point="/mnt" || mount_point="/mnt$ephemeral_count"
-    ephemeral_count++
-    mkdir $mount_point
-
-    # To turn TRIM support on, uncomment the following line.
-    #echo "$device $mount_point ext4 defaults,noatime,nodiratime,discard 0 0" >> /etc/fstab
-
-    mkfs.ext4 -E lazy_itable_init=0,lazy_journal_init=0 -N 67108864 $device # TODO: Fix hardcoded -N setting
-    mount -o defaults,noatime,nodiratime $device $mount_point
-  fi
-done
 
 # Mount options to use for ext3 and xfs disks (the ephemeral disks
 # are ext3, but we use xfs for EBS volumes to format them faster)
 XFS_MOUNT_OPTS="defaults,noatime,nodiratime,allocsize=8m"
+yum install -q -y xfsprogs
+
+function mount_device() {
+    device=$(readlink -e $1)
+    mount_point=$2
+
+    if [ -b "$device" ]; then
+      mkdir -p $mount_point
+
+      mkfs.xfs -f -q ${device}
+      mount -o $XFS_MOUNT_OPTS $device $mount_point
+      chmod -R a+w $mount_point
+    fi
+}
+
+ephemeral_count=1
+for label in ${device_mapping[*]}; do
+  if [[ $label == ephemeral* ]]; then
+    device="/dev/$(curl http://169.254.169.254/latest/meta-data/block-device-mapping/$label 2> /dev/null)"
+    [[ $ephemeral_count == 1 ]] && mount_point="/mnt" || mount_point="/mnt$ephemeral_count"
+    ((ephemeral_count++))
+
+    mount_device $device $mount_point
+  fi
+done
 
 function setup_ebs_volume {
   device=$1

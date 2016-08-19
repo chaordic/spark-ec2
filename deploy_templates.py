@@ -51,6 +51,7 @@ else:
 tachyon_mb = slave_ram_mb
 
 worker_instances_str = ""
+executor_instances_str = ""
 worker_cores = slave_cpus
 
 if os.getenv("SPARK_WORKER_INSTANCES") != "":
@@ -58,6 +59,13 @@ if os.getenv("SPARK_WORKER_INSTANCES") != "":
   worker_instances_str = "%d" % worker_instances
   # Distribute equally cpu cores among worker instances
   worker_cores = max(slave_cpus / worker_instances, 1)
+
+executor_cores = worker_cores
+if os.getenv("SPARK_EXECUTOR_INSTANCES") != "":
+  executor_instances = int(os.getenv("SPARK_EXECUTOR_INSTANCES", 1))
+  executor_instances_str = "%d" % executor_instances
+  # Distribute equally cpu cores among executor instances
+  executor_cores = max(slave_cpus / (executor_instances * worker_instances), 1)
 
 template_vars = {
   "master_list": os.getenv("MASTERS"),
@@ -68,7 +76,9 @@ template_vars = {
   "spark_local_dirs": os.getenv("SPARK_LOCAL_DIRS"),
   "spark_worker_mem": "%dm" % slave_ram_mb,
   "spark_worker_instances": worker_instances_str,
+  "spark_executor_instances": executor_instances_str,
   "spark_worker_cores": "%d" %  worker_cores,
+  "spark_executor_cores": "%d" % executor_cores,
   "spark_master_opts": os.getenv("SPARK_MASTER_OPTS", ""),
   "spark_version": os.getenv("SPARK_VERSION"),
   "tachyon_version": os.getenv("TACHYON_VERSION"),

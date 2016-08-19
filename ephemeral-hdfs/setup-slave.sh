@@ -20,7 +20,7 @@ function create_hadoop_dirs {
 }
 
 # Set up Hadoop and Mesos directories in /mnt
-create_hadoop_dirs /mnt
-create_hadoop_dirs /mnt2
-create_hadoop_dirs /mnt3
-create_hadoop_dirs /mnt4
+
+for dir in `ls /mnt*`; do
+	create_hadoop_dirs $dir;
+done
