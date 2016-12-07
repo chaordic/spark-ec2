@@ -137,9 +137,11 @@ else
       if [[ "$HADOOP_MAJOR_VERSION" == "1" ]]; then
         wget http://s3.amazonaws.com/spark-related-packages/spark-$SPARK_VERSION-bin-hadoop1.tgz
       elif [[ "$HADOOP_MAJOR_VERSION" == "2" ]]; then
-        wget http://d3kbcqa49mib13.cloudfront.net/spark-$SPARK_VERSION-bin-hadoop2.7.tgz
+        # Note: our build contains an up-to-date version of com.thoughtworks.paranamer (>= 2.6)
+        # The version 2.3 which comes with Hadoop Common (through Avro) can cause deadlocks in executors
+        wget https://s3.amazonaws.com/chaordic-ignition-public/spark-$SPARK_VERSION-bin-hadoop2.7.tgz
       else
-        wget http://d3kbcqa49mib13.cloudfront.net/spark-$SPARK_VERSION-bin-hadoop2.7.tgz
+        wget https://s3.amazonaws.com/chaordic-ignition-public/spark-$SPARK_VERSION-bin-hadoop2.7.tgz
       fi
       if [ $? != 0 ]; then
         echo "ERROR: Unknown Spark version"
